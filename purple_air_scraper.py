@@ -97,6 +97,9 @@ class Ticker():
             duration = end - start
 
             sleep_time = self.interval - duration
+            if sleep_time < 0:
+                logger.warning(f"Iteration took longer than {self.interval} seconds")
+                sleep_time = 0
             logger.info(f"Sleeping for {sleep_time} seconds")
             time.sleep(sleep_time)
 
