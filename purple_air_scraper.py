@@ -65,7 +65,7 @@ Aqi10 = Gauge(STAT_PREFIX + 'aqi_pm10_0', "PM10 AQI", SENSOR_LABELS)
 
 Temp_f = Gauge(STAT_PREFIX + 'temp_f', "Temperature in degrees Fahrenheit", SENSOR_LABELS)
 Humidity = Gauge(STAT_PREFIX + 'humidity', "% Humidity", SENSOR_LABELS)
-Pressure = Gauge(STAT_PREFIX + 'pressure', "Pressure in mm Hg", SENSOR_LABELS)
+Pressure = Gauge(STAT_PREFIX + 'pressure', "Pressure in millibar", SENSOR_LABELS)
 LastSeen = Gauge(STAT_PREFIX + 'last_seen_seconds', "timestamp when this sensor was last seen", SENSOR_LABELS)
 
 # PurpleAir sensor keys to Prometheus stats
