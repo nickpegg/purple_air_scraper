@@ -14,24 +14,22 @@ doc](https://www.airnow.gov/sites/default/files/2020-05/aqi-technical-assistance
 on how AQI is calculated as well as the AQI level tables.
 
 ## Usage
-To use this script you'll need a sensor ID and Key, which can be gotten from the
+To use this script you'll need a sensor ID, which can be gotten from the
 [PurpleAir map](https://www.purpleair.com/map). Find your favorite sensor, click on it
 to bring up the sensor popup. At the bottom of the popup is a "Get This Widget" link
 which will pop up another thing when you hover over it, click the "JSON" link.
 
 That will take you to a URL like `https://www.purpleair.com/json?key=<key>&show=<id>`. 
-The `<key>` and `<id>` are what you'll need to set as environment variables to configure
-the script.
+The `<id>` is what you'll need to set as an environment variable to configure the
+script.
 
 ## Configuration
 This script is configurable via environment variables, which is handy when running as a
 Docker container.
 
-### `PAS_SENSOR_KEY` (required)
-Key of the sensor to scrape, gotten from the PurpleAir /json URL for your sensor
-
-### `PAS_SENSOR_ID` (required)
-ID of the sensor to scrape, gotten from the PurpleAir /json URL for your sensor
+### `PAS_SENSOR_IDS` (required)
+Comma-separated list of IDs of the sensors to scrape, gotten from the PurpleAir /json
+URL for your sensor
 
 ### `PAS_LOGGING`
 Log level of the script, defaults to 'info', accepts any [Python logging level
