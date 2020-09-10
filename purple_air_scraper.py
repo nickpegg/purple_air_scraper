@@ -112,7 +112,7 @@ def main() -> None:
         logger.error(f"Missing env var: PAS_SENSOR_IDS")
         sys.exit(1)
 
-    sensor_ids = map(int, os.environ["PAS_SENSOR_IDS"].split(','))
+    sensor_ids = list(map(int, os.environ["PAS_SENSOR_IDS"].split(',')))
 
     log_level = getattr(logging, log_level.upper())
     logger.setLevel(log_level)
