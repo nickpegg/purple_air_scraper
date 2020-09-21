@@ -12,7 +12,7 @@ from purple_air_scraper import PM_2_5_AQI_TABLE, aqi
         (88.4, 168),
         (400, 457),
         (666, 500),
-    ]
+    ],
 )
 def test_pm2_5_aqi(given: float, expected: float) -> None:
     assert int(aqi(given, PM_2_5_AQI_TABLE)) == expected

@@ -23,10 +23,10 @@ URL = "https://www.purpleair.com/json?show={id}"
 
 PM_2_5_AQI_TABLE = [
     # PM2.5, AQI
-    (0,     0),
-    (12.1,  51),
-    (35.5,  101),
-    (55.5,  151),
+    (0, 0),
+    (12.1, 51),
+    (35.5, 101),
+    (55.5, 151),
     (150.5, 201),
     (250.5, 301),
     (350.5, 401),
@@ -34,53 +34,65 @@ PM_2_5_AQI_TABLE = [
 
 PM_10_AQI_TABLE = [
     # PM10, AQI
-    (0,     0),
-    (55,    51),
-    (155,   101),
-    (255,   151),
-    (355,   201),
-    (425,   301),
-    (505,   401),
+    (0, 0),
+    (55, 51),
+    (155, 101),
+    (255, 151),
+    (355, 201),
+    (425, 301),
+    (505, 401),
 ]
 
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('purple_air_scraper')
+logger = logging.getLogger("purple_air_scraper")
 
 
 # Types
 AqiTable = Sequence[Tuple[float, float]]
 
 # Stats
-STAT_PREFIX = 'purpleair_'
+STAT_PREFIX = "purpleair_"
 SENSOR_LABELS = ["unit_id", "sensor_id", "label"]
 AQI_LABELS = SENSOR_LABELS + ["conversion"]
 
-FetchErrors = Counter(STAT_PREFIX + 'fetch_errors', "Errors fetching data from PurpleAir sensor")
+FetchErrors = Counter(
+    STAT_PREFIX + "fetch_errors", "Errors fetching data from PurpleAir sensor"
+)
 
-Pm2_5 = Gauge(STAT_PREFIX + 'pm2_5', "2.5 micron particulate matter (ug/m^3)", SENSOR_LABELS)
-Pm10 = Gauge(STAT_PREFIX + 'pm10_0', "10 micron particulate matter (ug/m^3)", SENSOR_LABELS)
+Pm2_5 = Gauge(
+    STAT_PREFIX + "pm2_5", "2.5 micron particulate matter (ug/m^3)", SENSOR_LABELS
+)
+Pm10 = Gauge(
+    STAT_PREFIX + "pm10_0", "10 micron particulate matter (ug/m^3)", SENSOR_LABELS
+)
 
-Aqi2_5 = Gauge(STAT_PREFIX + 'aqi_pm2_5', "PM2.5 AQI", AQI_LABELS)
-Aqi10 = Gauge(STAT_PREFIX + 'aqi_pm10_0', "PM10 AQI", AQI_LABELS)
+Aqi2_5 = Gauge(STAT_PREFIX + "aqi_pm2_5", "PM2.5 AQI", AQI_LABELS)
+Aqi10 = Gauge(STAT_PREFIX + "aqi_pm10_0", "PM10 AQI", AQI_LABELS)
 
-Temp_f = Gauge(STAT_PREFIX + 'temp_f', "Temperature in degrees Fahrenheit", SENSOR_LABELS)
-Humidity = Gauge(STAT_PREFIX + 'humidity', "% Humidity", SENSOR_LABELS)
-Pressure = Gauge(STAT_PREFIX + 'pressure', "Pressure in millibar", SENSOR_LABELS)
-LastSeen = Gauge(STAT_PREFIX + 'last_seen_seconds', "timestamp when this sensor was last seen", SENSOR_LABELS)
+Temp_f = Gauge(
+    STAT_PREFIX + "temp_f", "Temperature in degrees Fahrenheit", SENSOR_LABELS
+)
+Humidity = Gauge(STAT_PREFIX + "humidity", "% Humidity", SENSOR_LABELS)
+Pressure = Gauge(STAT_PREFIX + "pressure", "Pressure in millibar", SENSOR_LABELS)
+LastSeen = Gauge(
+    STAT_PREFIX + "last_seen_seconds",
+    "timestamp when this sensor was last seen",
+    SENSOR_LABELS,
+)
 
 # PurpleAir sensor keys to Prometheus stats
 SENSOR_MAP = {
-    'pm2_5_atm': Pm2_5,
-    'pm10_0_atm': Pm10,
-    'temp_f': Temp_f,
-    'pressure': Pressure,
-    'humidity': Humidity,
-    'LastSeen': LastSeen,
+    "pm2_5_atm": Pm2_5,
+    "pm10_0_atm": Pm10,
+    "temp_f": Temp_f,
+    "pressure": Pressure,
+    "humidity": Humidity,
+    "LastSeen": LastSeen,
 }
 
 
-class Ticker():
+class Ticker:
     def __init__(self, interval: float):
         self.interval = interval
         self.go = True
@@ -106,14 +118,14 @@ class Ticker():
 
 
 def main() -> None:
-    log_level = os.environ.get("PAS_LOGGING", 'info')
-    prom_port = int(os.environ.get("PAS_PROM_PORT", '9101'))
+    log_level = os.environ.get("PAS_LOGGING", "info")
+    prom_port = int(os.environ.get("PAS_PROM_PORT", "9101"))
 
     if "PAS_SENSOR_IDS" not in os.environ or not os.environ["PAS_SENSOR_IDS"]:
         logger.error(f"Missing env var: PAS_SENSOR_IDS")
         sys.exit(1)
 
-    sensor_ids = list(map(int, os.environ["PAS_SENSOR_IDS"].split(',')))
+    sensor_ids = list(map(int, os.environ["PAS_SENSOR_IDS"].split(",")))
 
     log_level = getattr(logging, log_level.upper())
     logger.setLevel(log_level)
@@ -152,19 +164,21 @@ def collect(parent_sensor_id: int) -> None:
 
     # Most units have two sensors in them, collect stats for each.
     sensor_label = ""
-    for data in results['results']:
-        sensor_id = data.get('ID', '')
+    for data in results["results"]:
+        sensor_id = data.get("ID", "")
         if not sensor_label:
-            sensor_label = data.get('Label', '')
+            sensor_label = data.get("Label", "")
 
         # Most stats are copied
         for key, stat in SENSOR_MAP.items():
             if key in data:
-                stat.labels(unit_id=parent_sensor_id, sensor_id=sensor_id, label=sensor_label).set(data[key])
+                stat.labels(
+                    unit_id=parent_sensor_id, sensor_id=sensor_id, label=sensor_label
+                ).set(data[key])
 
         # Calculate AQI based on PM2.5 and PM10
-        if 'pm2_5_atm' in data:
-            pm2_5_aqi = aqi(float(data['pm2_5_atm']), PM_2_5_AQI_TABLE)
+        if "pm2_5_atm" in data:
+            pm2_5_aqi = aqi(float(data["pm2_5_atm"]), PM_2_5_AQI_TABLE)
             Aqi2_5.labels(
                 unit_id=parent_sensor_id,
                 sensor_id=sensor_id,
@@ -173,15 +187,15 @@ def collect(parent_sensor_id: int) -> None:
             ).set(pm2_5_aqi)
 
             # AQandU conversion
-            pm2_5_aqi = aqi(aqandu(float(data['pm2_5_atm'])), PM_2_5_AQI_TABLE)
+            pm2_5_aqi = aqi(aqandu(float(data["pm2_5_atm"])), PM_2_5_AQI_TABLE)
             Aqi2_5.labels(
                 unit_id=parent_sensor_id,
                 sensor_id=sensor_id,
                 label=sensor_label,
                 conversion="AQandU",
             ).set(pm2_5_aqi)
-        if 'pm10_0_atm' in data:
-            pm10_aqi = aqi(float(data['pm10_0_atm']), PM_10_AQI_TABLE)
+        if "pm10_0_atm" in data:
+            pm10_aqi = aqi(float(data["pm10_0_atm"]), PM_10_AQI_TABLE)
             Aqi10.labels(
                 unit_id=parent_sensor_id,
                 sensor_id=sensor_id,
@@ -190,7 +204,7 @@ def collect(parent_sensor_id: int) -> None:
             ).set(pm10_aqi)
 
             # AQandU conversion
-            pm10_aqi = aqi(aqandu(float(data['pm10_0_atm'])), PM_10_AQI_TABLE)
+            pm10_aqi = aqi(aqandu(float(data["pm10_0_atm"])), PM_10_AQI_TABLE)
             Aqi10.labels(
                 unit_id=parent_sensor_id,
                 sensor_id=sensor_id,
@@ -218,6 +232,7 @@ def aqi(pm: float, table: AqiTable) -> float:
         # top of scale
         aqi = 500
     return aqi
+
 
 def aqandu(pm: float) -> float:
     """
