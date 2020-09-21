@@ -183,7 +183,7 @@ def collect(parent_sensor_id: int) -> None:
                 unit_id=parent_sensor_id,
                 sensor_id=sensor_id,
                 label=sensor_label,
-                conversion="None",
+                conversion="",
             ).set(pm2_5_aqi)
 
             # AQandU conversion
@@ -200,7 +200,7 @@ def collect(parent_sensor_id: int) -> None:
                 unit_id=parent_sensor_id,
                 sensor_id=sensor_id,
                 label=sensor_label,
-                conversion="None",
+                conversion="",
             ).set(pm10_aqi)
 
             # AQandU conversion
