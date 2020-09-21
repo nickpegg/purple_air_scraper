@@ -54,14 +54,15 @@ AqiTable = Sequence[Tuple[float, float]]
 # Stats
 STAT_PREFIX = 'purpleair_'
 SENSOR_LABELS = ["unit_id", "sensor_id", "label"]
+AQI_LABELS = SENSOR_LABELS + ["conversion"]
 
 FetchErrors = Counter(STAT_PREFIX + 'fetch_errors', "Errors fetching data from PurpleAir sensor")
 
 Pm2_5 = Gauge(STAT_PREFIX + 'pm2_5', "2.5 micron particulate matter (ug/m^3)", SENSOR_LABELS)
 Pm10 = Gauge(STAT_PREFIX + 'pm10_0', "10 micron particulate matter (ug/m^3)", SENSOR_LABELS)
 
-Aqi2_5 = Gauge(STAT_PREFIX + 'aqi_pm2_5', "PM2.5 AQI", SENSOR_LABELS)
-Aqi10 = Gauge(STAT_PREFIX + 'aqi_pm10_0', "PM10 AQI", SENSOR_LABELS)
+Aqi2_5 = Gauge(STAT_PREFIX + 'aqi_pm2_5', "PM2.5 AQI", AQI_LABELS)
+Aqi10 = Gauge(STAT_PREFIX + 'aqi_pm10_0', "PM10 AQI", AQI_LABELS)
 
 Temp_f = Gauge(STAT_PREFIX + 'temp_f', "Temperature in degrees Fahrenheit", SENSOR_LABELS)
 Humidity = Gauge(STAT_PREFIX + 'humidity', "% Humidity", SENSOR_LABELS)
@@ -164,10 +165,38 @@ def collect(parent_sensor_id: int) -> None:
         # Calculate AQI based on PM2.5 and PM10
         if 'pm2_5_atm' in data:
             pm2_5_aqi = aqi(float(data['pm2_5_atm']), PM_2_5_AQI_TABLE)
-            Aqi2_5.labels(unit_id=parent_sensor_id, sensor_id=sensor_id, label=sensor_label).set(pm2_5_aqi)
+            Aqi2_5.labels(
+                unit_id=parent_sensor_id,
+                sensor_id=sensor_id,
+                label=sensor_label,
+                conversion="None",
+            ).set(pm2_5_aqi)
+
+            # AQandU conversion
+            pm2_5_aqi = aqi(aqandu(float(data['pm2_5_atm'])), PM_2_5_AQI_TABLE)
+            Aqi2_5.labels(
+                unit_id=parent_sensor_id,
+                sensor_id=sensor_id,
+                label=sensor_label,
+                conversion="AQandU",
+            ).set(pm2_5_aqi)
         if 'pm10_0_atm' in data:
             pm10_aqi = aqi(float(data['pm10_0_atm']), PM_10_AQI_TABLE)
-            Aqi10.labels(unit_id=parent_sensor_id, sensor_id=sensor_id, label=sensor_label).set(pm10_aqi)
+            Aqi10.labels(
+                unit_id=parent_sensor_id,
+                sensor_id=sensor_id,
+                label=sensor_label,
+                conversion="None",
+            ).set(pm10_aqi)
+
+            # AQandU conversion
+            pm10_aqi = aqi(aqandu(float(data['pm10_0_atm'])), PM_10_AQI_TABLE)
+            Aqi10.labels(
+                unit_id=parent_sensor_id,
+                sensor_id=sensor_id,
+                label=sensor_label,
+                conversion="AQandU",
+            ).set(pm10_aqi)
 
 
 def aqi(pm: float, table: AqiTable) -> float:
@@ -189,6 +218,12 @@ def aqi(pm: float, table: AqiTable) -> float:
         # top of scale
         aqi = 500
     return aqi
+
+def aqandu(pm: float) -> float:
+    """
+    Returns AQandU conversion for the given Particulate Matter value
+    """
+    return 0.778 * pm + 2.65
 
 
 if __name__ == "__main__":
