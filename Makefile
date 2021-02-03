@@ -1,14 +1,15 @@
 all: lint test
 
-bootstrap:
-	pipenv install -d
+develop:
+	pip install --upgrade poetry
+	poetry install
 
 lint:
-	pipenv run black *py
+	poetry run black *py
 
 test:
-	pipenv run mypy *py
-	pipenv run pytest
+	poetry run mypy *py
+	poetry run pytest
 
 build:
 	docker build -t nickpegg/purple_air_scraper .
