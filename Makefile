@@ -1,7 +1,8 @@
 all: lint test
 
-bootstrap:
-	poetry install -d
+develop:
+	pip install --upgrade poetry
+	poetry install
 
 lint:
 	poetry run black *py
