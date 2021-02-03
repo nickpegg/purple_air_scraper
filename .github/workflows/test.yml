@@ -36,7 +36,6 @@ jobs:
         key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
         restore-keys: |
           ${{ runner.os }}-poetry-
-          ${{ runner.os }}-
     - name: Install deps
       run: make develop
     - name: Run tests
