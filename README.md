@@ -37,6 +37,8 @@ This is the API token that you need to make requests to the API.
 There's probably an official way to get one, but they also give you one when
 you look at the map in a browser. If you open up Developer Tools and watch the
 network requests, you'll see some requests that have a `token` query param.
+That `token` is your API token. Don't worry about whether or not it's
+URL-quoted, we'll take care of dealing with that.
 
 ### `PAS_LOGGING`
 Log level of the script, defaults to 'info', accepts any [Python logging level
