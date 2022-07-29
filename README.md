@@ -15,11 +15,11 @@ on how AQI is calculated as well as the AQI level tables.
 
 ## Usage
 To use this script you'll need a sensor ID, which can be gotten from the
-[PurpleAir map](https://www.purpleair.com/map). Find your favorite sensor, click on it
-to bring up the sensor popup. At the bottom of the popup is a "Get This Widget" link
-which will pop up another thing when you hover over it, click the "JSON" link.
+[PurpleAir map](https://www.purpleair.com/map). Find your favorite sensor,
+click on it to bring up the sensor popup. Toward  the bottom of the popup is a
+"Get This Widget" link, click it.
 
-That will take you to a URL like `https://www.purpleair.com/json?key=<key>&show=<id>`. 
+That will take you to a URL like `https://www.purpleair.com/sensorlist?key=<key>&show=<id>`. 
 The `<id>` is what you'll need to set as an environment variable to configure the
 script.
 
@@ -30,6 +30,13 @@ Docker container.
 ### `PAS_SENSOR_IDS` (required)
 Comma-separated list of IDs of the sensors to scrape, gotten from the PurpleAir /json
 URL for your sensor
+
+### `PAS_API_TOKEN` (required)
+This is the API token that you need to make requests to the API. 
+
+There's probably an official way to get one, but they also give you one when
+you look at the map in a browser. If you open up Developer Tools and watch the
+network requests, you'll see some requests that have a `token` query param.
 
 ### `PAS_LOGGING`
 Log level of the script, defaults to 'info', accepts any [Python logging level
