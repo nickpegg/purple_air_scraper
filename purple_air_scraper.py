@@ -19,6 +19,7 @@ from prometheus_client import Counter, Gauge, start_http_server
 INTERVAL_S = 30
 
 URL = "https://www.purpleair.com/json?show={id}"
+SENSOR_URL = "https://map.purpleair.com/v1/sensors/{id}?token={token}&fields=humidity,pm2.5,pm10.0,temperature,pressure,humidity,hardware,firmware_version,rssi,last_seen,name"
 
 
 PM_2_5_AQI_TABLE = [
@@ -83,12 +84,20 @@ LastSeen = Gauge(
 
 # PurpleAir sensor keys to Prometheus stats
 SENSOR_MAP = {
+    # Old API: www.purpleair.com/json
     "pm2_5_atm": Pm2_5,
     "pm10_0_atm": Pm10,
     "temp_f": Temp_f,
     "pressure": Pressure,
     "humidity": Humidity,
     "LastSeen": LastSeen,
+    # New API, api.purpleair.com
+    "pm2.5": Pm2_5,
+    "pm10.0": Pm10,
+    "temperature": Temp_f,
+    "pressure": Pressure,
+    "humidity": Humidity,
+    "last_seen": LastSeen,
 }
 
 
@@ -125,24 +134,30 @@ def main() -> None:
         logger.error(f"Missing env var: PAS_SENSOR_IDS")
         sys.exit(1)
 
+    api_token = os.environ.get("PAS_API_TOKEN", "")
+    if api_token == "":
+        logger.error("Missing env var: PAS_API_TOKEN")
+        sys.exit(1)
+
     sensor_ids = list(map(int, os.environ["PAS_SENSOR_IDS"].split(",")))
 
     log_level = getattr(logging, log_level.upper())
     logger.setLevel(log_level)
 
     start_http_server(int(prom_port))
+
     for _ in Ticker(INTERVAL_S).run():
         for sensor_id in sensor_ids:
-            collect(sensor_id)
+            collect(sensor_id, api_token)
 
 
-def collect(parent_sensor_id: int) -> None:
+def collect(parent_sensor_id: int, api_token: str) -> None:
     logger.info(f"Collecting data from sensor_id {parent_sensor_id}")
 
-    url = URL.format(id=parent_sensor_id)
+    sensor_url = SENSOR_URL.format(id=parent_sensor_id, token=api_token)
 
-    logger.debug(f"Fetching {url}")
-    response = requests.get(url)
+    logger.debug(f"Fetching {sensor_url}")
+    response = requests.get(sensor_url)
 
     if response.status_code == 429:
         logger.warning("Throttled")
@@ -151,7 +166,7 @@ def collect(parent_sensor_id: int) -> None:
     try:
         response.raise_for_status()
     except:
-        logger.exception(f"Error fetching {url}")
+        logger.exception(f"Error fetching {sensor_url}")
         FetchErrors.inc()
         return
 
@@ -162,55 +177,54 @@ def collect(parent_sensor_id: int) -> None:
         FetchErrors.inc()
         return
 
-    # Most units have two sensors in them, collect stats for each.
     sensor_label = ""
-    for data in results["results"]:
-        sensor_id = data.get("ID", "")
-        if not sensor_label:
-            sensor_label = data.get("Label", "")
+    data = results["sensor"]
 
-        # Most stats are copied
-        for key, stat in SENSOR_MAP.items():
-            if key in data:
-                stat.labels(
-                    unit_id=parent_sensor_id, sensor_id=sensor_id, label=sensor_label
-                ).set(data[key])
+    sensor_id = data.get("sensor_index", "")
+    sensor_label = data.get("name", "")
 
-        # Calculate AQI based on PM2.5 and PM10
-        if "pm2_5_atm" in data:
-            pm2_5_aqi = aqi(float(data["pm2_5_atm"]), PM_2_5_AQI_TABLE)
-            Aqi2_5.labels(
-                unit_id=parent_sensor_id,
-                sensor_id=sensor_id,
-                label=sensor_label,
-                conversion="",
-            ).set(pm2_5_aqi)
+    # Most stats are copied straight into Prometheus stats
+    for key, stat in SENSOR_MAP.items():
+        if key in data:
+            stat.labels(
+                unit_id=parent_sensor_id, sensor_id=sensor_id, label=sensor_label
+            ).set(data[key])
 
-            # AQandU conversion
-            pm2_5_aqi = aqi(aqandu(float(data["pm2_5_atm"])), PM_2_5_AQI_TABLE)
-            Aqi2_5.labels(
-                unit_id=parent_sensor_id,
-                sensor_id=sensor_id,
-                label=sensor_label,
-                conversion="AQandU",
-            ).set(pm2_5_aqi)
-        if "pm10_0_atm" in data:
-            pm10_aqi = aqi(float(data["pm10_0_atm"]), PM_10_AQI_TABLE)
-            Aqi10.labels(
-                unit_id=parent_sensor_id,
-                sensor_id=sensor_id,
-                label=sensor_label,
-                conversion="",
-            ).set(pm10_aqi)
+    # Calculate AQI based on PM2.5 and PM10
+    if "pm2.5" in data:
+        pm2_5_aqi = aqi(float(data["pm2.5"]), PM_2_5_AQI_TABLE)
+        Aqi2_5.labels(
+            unit_id=parent_sensor_id,
+            sensor_id=sensor_id,
+            label=sensor_label,
+            conversion="",
+        ).set(pm2_5_aqi)
 
-            # AQandU conversion
-            pm10_aqi = aqi(aqandu(float(data["pm10_0_atm"])), PM_10_AQI_TABLE)
-            Aqi10.labels(
-                unit_id=parent_sensor_id,
-                sensor_id=sensor_id,
-                label=sensor_label,
-                conversion="AQandU",
-            ).set(pm10_aqi)
+        # AQandU conversion
+        pm2_5_aqi = aqi(aqandu(float(data["pm2.5"])), PM_2_5_AQI_TABLE)
+        Aqi2_5.labels(
+            unit_id=parent_sensor_id,
+            sensor_id=sensor_id,
+            label=sensor_label,
+            conversion="AQandU",
+        ).set(pm2_5_aqi)
+    if "pm10.0" in data:
+        pm10_aqi = aqi(float(data["pm10.0"]), PM_10_AQI_TABLE)
+        Aqi10.labels(
+            unit_id=parent_sensor_id,
+            sensor_id=sensor_id,
+            label=sensor_label,
+            conversion="",
+        ).set(pm10_aqi)
+
+        # AQandU conversion
+        pm10_aqi = aqi(aqandu(float(data["pm10.0"])), PM_10_AQI_TABLE)
+        Aqi10.labels(
+            unit_id=parent_sensor_id,
+            sensor_id=sensor_id,
+            label=sensor_label,
+            conversion="AQandU",
+        ).set(pm10_aqi)
 
 
 def aqi(pm: float, table: AqiTable) -> float:
