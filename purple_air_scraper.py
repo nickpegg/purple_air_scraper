@@ -4,6 +4,7 @@ import sys
 import time
 from typing import List, Tuple, Sequence, Iterator
 from argparse import ArgumentParser
+from urllib.parse import quote as urlquote, unquote as urlunquote
 
 import requests
 from prometheus_client import Counter, Gauge, start_http_server
@@ -18,7 +19,8 @@ from prometheus_client import Counter, Gauge, start_http_server
 
 INTERVAL_S = 30
 
-URL = "https://www.purpleair.com/json?show={id}"
+# Yes, we're bad for encoding the token in the URL, but PurpleAir gives us a 403 if we
+# pass it via the X-API-Key header, even if it's URL-decoded.
 SENSOR_URL = "https://map.purpleair.com/v1/sensors/{id}?token={token}&fields=humidity,pm2.5,pm10.0,temperature,pressure,humidity,hardware,firmware_version,rssi,last_seen,name"
 
 
@@ -154,7 +156,11 @@ def main() -> None:
 def collect(parent_sensor_id: int, api_token: str) -> None:
     logger.info(f"Collecting data from sensor_id {parent_sensor_id}")
 
-    sensor_url = SENSOR_URL.format(id=parent_sensor_id, token=api_token)
+    # We're not sure if we're getting a URL-quoted token or not, but we need to make
+    # sure it is quoted before we send it along. So first, unquote it which is a no-op
+    # if it is already unquoted, then quote it.
+    quoted_token = urlquote(urlunquote(api_token))
+    sensor_url = SENSOR_URL.format(id=parent_sensor_id, token=quoted_token)
 
     logger.debug(f"Fetching {sensor_url}")
     response = requests.get(sensor_url)
